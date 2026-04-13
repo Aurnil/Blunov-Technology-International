@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUNOV — Custom Software & Scalable Systems</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,200;0,300;0,600;1,200;1,300&family=Public+Sans:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black:       #000000;
+    --abyss:       #010816;
+    --navy:        #02122B;
+    --cyan:        #00F2FF;
+    --cyan-dim:    rgba(0,242,255,0.15);
+    --cyan-glow:   rgba(0,242,255,0.45);
+    --white:       #ffffff;
+    --white-70:    rgba(255,255,255,0.70);
+    --white-30:    rgba(255,255,255,0.30);
+    --white-10:    rgba(255,255,255,0.08);
+    --white-5:     rgba(255,255,255,0.04);
+    --font-display: 'Cormorant Garamond', serif;
+    --font-body:    'Public Sans', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: var(--font-body);
+    font-weight: 300;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* ─── CUSTOM CURSOR ─────────────────────────────────────── */
+  #cursor-outer {
+    position: fixed; top: 0; left: 0; z-index: 9999;
+    width: 32px; height: 32px;
+    border: 0.5px solid rgba(0,242,255,0.6);
+    border-radius: 50%;
+    pointer-events: none;
+    transition: transform 0.12s ease, border-color 0.3s ease;
+    will-change: transform;
+    transform: translate(-50%, -50%);
+  }
+  #cursor-inner {
+    position: fixed; top: 0; left: 0; z-index: 10000;
+    width: 5px; height: 5px;
+    background: var(--cyan);
+    border-radius: 50%;
+    pointer-events: none;
+    will-change: transform;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 8px var(--cyan);
+  }
+  body:has(a:hover) #cursor-outer,
+  body:has(button:hover) #cursor-outer { transform: translate(-50%,-50%) scale(1.6); border-color: var(--cyan); }
+
+  /* ─── OCEAN BACKGROUND ──────────────────────────────────── */
+  #ocean {
+    position: fixed; inset: 0; z-index: 0;
+    background: var(--black);
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* Layer 1: gradient bed */
+  #ocean-bed {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 100%, #02122B 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 20% 80%, #010816 0%, transparent 60%),
+      #000000;
+  }
+
+  /* Layer 2: mid-current blobs */
+  #ocean-mid {
+    position: absolute; inset: -20%;
+    width: 140%; height: 140%;
+    will-change: transform;
+    filter: blur(80px);
+    opacity: 0.5;
+  }
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    animation: blobDrift linear infinite;
+  }
+  .b1 { width:600px;height:600px;background:radial-gradient(circle,#02122B,transparent);left:10%;top:20%;animation-duration:28s; }
+  .b2 { width:400px;height:400px;background:radial-gradient(circle,#01101F,transparent);left:55%;top:40%;animation-duration:35s;animation-delay:-12s; }
+  .b3 { width:500px;height:500px;background:radial-gradient(circle,#010C1A,transparent);left:30%;top:60%;animation-duration:22s;animation-delay:-5s; }
+  .b4 { width:300px;height:300px;background:radial-gradient(circle,rgba(0,242,255,0.04),transparent);left:70%;top:10%;animation-duration:40s;animation-delay:-20s; }
+  .b5 { width:700px;height:700px;background:radial-gradient(circle,#010816,transparent);left:-10%;top:50%;animation-duration:50s;animation-delay:-8s; }
+
+  @keyframes blobDrift {
+    0%   { transform: translate(0,0) scale(1); }
+    33%  { transform: translate(3%,5%) scale(1.04); }
+    66%  { transform: translate(-2%,3%) scale(0.97); }
+    100% { transform: translate(0,0) scale(1); }
+  }
+
+  /* Layer 3: bioluminescent shimmers */
+  #ocean-surface {
+    position: absolute; inset: 0;
+    will-change: transform;
+  }
+  .shimmer {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,242,255,0.18) 0%, transparent 70%);
+    animation: shimmerPulse ease-in-out infinite;
+    filter: blur(2px);
+  }
+  @keyframes shimmerPulse {
+    0%,100% { opacity:0.15; transform:scale(1); }
+    50%      { opacity:0.45; transform:scale(1.2); }
+  }
+
+  /* Particle canvas */
+  #particle-canvas {
+    position: fixed; inset: 0; z-index: 1;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  /* ─── NAVIGATION ────────────────────────────────────────── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.75rem 3.5rem;
+    transition: background 0.6s ease, backdrop-filter 0.6s ease;
+  }
+  nav.scrolled {
+    background: rgba(1,8,22,0.82);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 0.5px solid rgba(0,242,255,0.08);
+  }
+
+  .nav-logo {
+    font-family: var(--font-body);
+    font-weight: 200;
+    font-size: 1.1rem;
+    letter-spacing: 0.25em;
+    color: var(--white);
+    animation: logoPulse 10s ease-in-out infinite;
+  }
+  .nav-logo-wrap::after {
+    content: '';
+    position: absolute; bottom: -2px; left: 0; right: 0; height: 0.5px;
+    background: var(--cyan);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+  }
+  .nav-logo-wrap:hover::after { transform: scaleX(1); }
+  @keyframes logoPulse {
+    0%,90%,100% { text-shadow: none; }
+    92% { text-shadow: 0 0 20px rgba(0,242,255,0.5), 0 0 40px rgba(0,242,255,0.2); }
+    96% { text-shadow: 0 0 8px rgba(0,242,255,0.25); }
+  }
+
+  /* Logo lockup */
+  .nav-logo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    z-index: 201;
+    position: relative;
+  }
+  /* Placeholder logo mark — swap the <img> src when asset is ready */
+  .nav-logo-img {
+    width: 28px; height: 28px;
+    border-radius: 3px;
+    background: rgba(0,242,255,0.06);
+    border: 0.5px solid rgba(0,242,255,0.22);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; overflow: hidden;
+  }
+  .nav-logo-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .nav-logo-img svg { width: 14px; height: 14px; opacity: 0.45; }
+
+  /* Desktop nav links */
+  .nav-links {
+    display: flex; gap: 2.5rem;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--white-70);
+    text-decoration: none;
+    transition: color 0.3s ease;
+    position: relative;
+  }
+  .nav-links a::after {
+    content: '';
+    position: absolute; bottom: -3px; left: 0; right: 0; height: 0.5px;
+    background: var(--cyan);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.35s ease;
+  }
+  .nav-links a:hover { color: var(--white); }
+  .nav-links a:hover::after { transform: scaleX(1); }
+
+  /* ─── HAMBURGER ──────────────────────────────────────────── */
+  .nav-hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 36px; height: 36px;
+    background: none; border: none;
+    cursor: pointer; padding: 4px;
+    z-index: 201;
+    position: relative;
+  }
+  .nav-hamburger span {
+    display: block;
+    width: 100%; height: 0.5px;
+    background: var(--white);
+    transition: transform 0.35s cubic-bezier(0.23,1,0.32,1),
+                opacity 0.25s ease,
+                background 0.3s ease;
+    transform-origin: center;
+  }
+  .nav-hamburger.open span:nth-child(1) { transform: translateY(5.5px) rotate(45deg); background: var(--cyan); }
+  .nav-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+  .nav-hamburger.open span:nth-child(3) { transform: translateY(-5.5px) rotate(-45deg); background: var(--cyan); }
+
+  /* ─── MOBILE DRAWER ──────────────────────────────────────── */
+  .nav-drawer {
+    display: none;
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(1,8,22,0.97);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    flex-direction: column;
+    align-items: center; justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  .nav-drawer.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .nav-drawer ul {
+    list-style: none;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 2.5rem;
+    text-align: center;
+  }
+  .nav-drawer ul a {
+    font-family: var(--font-body);
+    font-weight: 200;
+    font-size: 1.3rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--white-70);
+    text-decoration: none;
+    transition: color 0.3s ease;
+  }
+  .nav-drawer ul a:hover { color: var(--cyan); }
+  .nav-drawer-line {
+    width: 0.5px; height: 48px;
+    background: linear-gradient(to bottom, transparent, rgba(0,242,255,0.3), transparent);
+    margin: 2rem 0;
+  }
+  .nav-drawer-contact {
+    font-family: var(--font-body);
+    font-weight: 300; font-size: 0.7rem;
+    letter-spacing: 0.15em; color: var(--white-30);
+    text-decoration: none;
+  }
+
+  /* ─── MAIN CONTENT ──────────────────────────────────────── */
+  main { position: relative; z-index: 10; }
+
+  /* ─── SECTION 1: HERO ───────────────────────────────────── */
+  #hero {
+    height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 0 2rem;
+    position: relative;
+  }
+
+  .hero-eyebrow {
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 0.65rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 2rem;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.9s ease 0.2s, transform 0.9s ease 0.2s;
+  }
+
+  .hero-headline {
+    font-family: var(--font-display);
+    font-weight: 200;
+    font-size: clamp(3rem, 7vw, 6.5rem);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    color: var(--white);
+    max-width: 820px;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 1.1s ease 0.45s, transform 1.1s ease 0.45s;
+    font-style: italic;
+  }
+  .hero-headline span { font-style: normal; font-weight: 600; }
+
+  .hero-sub {
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: clamp(0.85rem, 1.5vw, 1rem);
+    line-height: 1.8;
+    letter-spacing: 0.04em;
+    color: var(--white-70);
+    max-width: 520px;
+    margin-top: 2rem;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 1s ease 0.75s, transform 1s ease 0.75s;
+  }
+
+  .hero-cta {
+    margin-top: 3.5rem;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 1s ease 1s, transform 1s ease 1s;
+  }
+
+  .btn-liquid {
+    display: inline-block;
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--white);
+    text-decoration: none;
+    padding: 1rem 2.8rem;
+    border: 0.5px solid rgba(255,255,255,0.25);
+    position: relative;
+    overflow: hidden;
+    transition: color 0.5s ease, border-color 0.5s ease;
+    cursor: none;
+  }
+  .btn-liquid::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--cyan);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.55s cubic-bezier(0.23,1,0.32,1);
+    z-index: -1;
+  }
+  .btn-liquid:hover { color: var(--black); border-color: var(--cyan); }
+  .btn-liquid:hover::before { transform: scaleX(1); }
+
+  .hero-scroll-hint {
+    position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+    opacity: 0;
+    transition: opacity 1s ease 1.4s;
+  }
+  .hero-scroll-hint span {
+    font-family: var(--font-body);
+    font-size: 0.6rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--white-30);
+  }
+  .scroll-line {
+    width: 0.5px; height: 48px;
+    background: linear-gradient(to bottom, var(--white-30), transparent);
+    animation: scrollDrop 2.2s ease-in-out infinite;
+  }
+  @keyframes scrollDrop {
+    0%,100% { opacity:0; transform:scaleY(0); transform-origin:top; }
+    30%      { opacity:1; transform:scaleY(1); transform-origin:top; }
+    70%      { opacity:1; transform:scaleY(1); transform-origin:bottom; }
+    100%     { opacity:0; transform:scaleY(0); transform-origin:bottom; }
+  }
+
+  .hero-visible .hero-eyebrow,
+  .hero-visible .hero-headline,
+  .hero-visible .hero-sub,
+  .hero-visible .hero-cta,
+  .hero-visible .hero-scroll-hint {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ─── SECTION 2: PHILOSOPHY ─────────────────────────────── */
+  #philosophy {
+    padding: 10rem 3.5rem 10rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1.8fr;
+    gap: 5rem;
+    align-items: start;
+  }
+
+  .section-num {
+    font-family: var(--font-display);
+    font-weight: 200;
+    font-size: clamp(5rem, 10vw, 9rem);
+    color: rgba(255,255,255,0.06);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    user-select: none;
+    transition: color 0.6s ease;
+  }
+  #philosophy:hover .section-num { color: rgba(0,242,255,0.08); }
+
+  .philosophy-content { padding-top: 1rem; }
+
+  .section-tag {
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 0.62rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 1.5rem;
+    display: block;
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    color: var(--white);
+    margin-bottom: 2rem;
+  }
+  .section-title em { font-style: italic; font-weight: 200; }
+
+  .philosophy-text {
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 0.95rem;
+    line-height: 1.95;
+    color: var(--white-70);
+    max-width: 520px;
+  }
+
+  .philosophy-rule {
+    width: 48px; height: 0.5px;
+    background: linear-gradient(to right, var(--cyan), transparent);
+    margin: 2.5rem 0;
+  }
+
+  .philosophy-quote {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 200;
+    font-size: 1.25rem;
+    line-height: 1.6;
+    color: var(--white-70);
+    border-left: 0.5px solid var(--cyan);
+    padding-left: 1.5rem;
+  }
+
+  /* ─── SECTION 3: INNOVATION ─────────────────────────────── */
+  #innovation {
+    padding: 8rem 3.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .innovation-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 5rem;
+  }
+
+  .innovation-header .section-num { font-size: clamp(4rem,8vw,7rem); }
+
+  .innovation-header-right {
+    text-align: right;
+    padding-bottom: 0.5rem;
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5px;
+  }
+
+  .card {
+    position: relative;
+    padding: 3.5rem 2.8rem 4rem;
+    background: var(--white-5);
+    border: 0.5px solid rgba(255,255,255,0.06);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    overflow: hidden;
+    transition: border-color 0.5s ease, background 0.5s ease;
+    cursor: none;
+  }
+  .card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(0,242,255,0.04) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  .card::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 0.5px;
+    background: linear-gradient(to right, transparent, var(--cyan), transparent);
+    transform: scaleX(0);
+    transition: transform 0.6s cubic-bezier(0.23,1,0.32,1);
+  }
+  .card:hover { border-color: rgba(0,242,255,0.2); background: rgba(0,242,255,0.03); }
+  .card:hover::before { opacity: 1; }
+  .card:hover::after { transform: scaleX(1); }
+
+  .card-index {
+    font-family: var(--font-body);
+    font-weight: 200;
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    color: var(--cyan);
+    opacity: 0.7;
+    margin-bottom: 2.5rem;
+    display: block;
+  }
+
+  .card-icon {
+    width: 28px; height: 28px;
+    margin-bottom: 2rem;
+    opacity: 0.5;
+    transition: opacity 0.4s ease;
+  }
+  .card:hover .card-icon { opacity: 1; }
+
+  .card-title {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-size: 1.7rem;
+    letter-spacing: 0.03em;
+    color: var(--white);
+    margin-bottom: 1.25rem;
+    line-height: 1.2;
+  }
+
+  .card-text {
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 0.84rem;
+    line-height: 1.85;
+    color: var(--white-30);
+    transition: color 0.4s ease;
+  }
+  .card:hover .card-text { color: var(--white-70); }
+
+  .card-arrow {
+    position: absolute; bottom: 2.5rem; right: 2.5rem;
+    width: 20px; height: 20px;
+    opacity: 0;
+    transform: translate(-4px, 4px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .card:hover .card-arrow { opacity: 0.5; transform: translate(0,0); }
+
+  /* ─── DIVIDER ────────────────────────────────────────────── */
+  .section-divider {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 3.5rem;
+  }
+  .section-divider hr {
+    border: none;
+    height: 0.5px;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent);
+  }
+
+  /* ─── SECTION 4: FOOTER ──────────────────────────────────── */
+  footer {
+    padding: 7rem 3.5rem 4rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .footer-top {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 5rem;
+  }
+
+  .footer-brand .nav-logo {
+    font-size: 1.5rem;
+    letter-spacing: 0.3em;
+    display: block;
+    margin-bottom: 1rem;
+  }
+  .footer-brand p {
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    color: var(--white-30);
+    max-width: 260px;
+    line-height: 1.7;
+  }
+
+  .footer-socials {
+    display: flex; gap: 1.5rem;
+    align-items: center;
+  }
+
+  .social-link {
+    display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px;
+    border: 0.5px solid rgba(255,255,255,0.12);
+    border-radius: 50%;
+    color: var(--white-30);
+    text-decoration: none;
+    transition: color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+    cursor: none;
+  }
+  .social-link:hover {
+    color: var(--cyan);
+    border-color: var(--cyan);
+    box-shadow: 0 0 16px rgba(0,242,255,0.2), inset 0 0 16px rgba(0,242,255,0.04);
+  }
+  .social-link svg { width: 15px; height: 15px; fill: currentColor; }
+
+  .footer-bottom {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 2rem;
+    border-top: 0.5px solid rgba(255,255,255,0.05);
+  }
+  .footer-bottom p, .footer-bottom nav { 
+    font-family: var(--font-body);
+    font-weight: 300; font-size: 0.68rem;
+    letter-spacing: 0.12em; color: var(--white-30);
+  }
+  .footer-bottom nav { display: flex; gap: 2rem; }
+  .footer-bottom a { color: var(--white-30); text-decoration: none; transition: color 0.3s; }
+  .footer-bottom a:hover { color: var(--white-70); }
+
+  /* ─── REVEAL ANIMATIONS ─────────────────────────────────── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.9s cubic-bezier(0.23,1,0.32,1), transform 0.9s cubic-bezier(0.23,1,0.32,1);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .reveal-d1 { transition-delay: 0.1s; }
+  .reveal-d2 { transition-delay: 0.22s; }
+  .reveal-d3 { transition-delay: 0.36s; }
+  .reveal-d4 { transition-delay: 0.5s; }
+
+  /* ─── SCROLLBAR ──────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 2px; }
+  ::-webkit-scrollbar-track { background: var(--black); }
+  ::-webkit-scrollbar-thumb { background: rgba(0,242,255,0.25); border-radius: 2px; }
+
+  /* ─── RESPONSIVE ─────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    /* nav */
+    nav { padding: 1.5rem 1.5rem; }
+    .nav-links { display: none; }
+    .nav-hamburger { display: flex; }
+    .nav-drawer { display: flex; }
+
+    /* hero */
+    #hero { padding: 0 1.5rem; }
+    .hero-eyebrow {
+      font-size: 0.55rem;
+      letter-spacing: 0.18em;
+      text-align: center;
+      line-height: 1.8;
+    }
+    .hero-headline {
+      font-size: clamp(2.4rem, 10vw, 3.8rem);
+    }
+    .hero-sub {
+      font-size: 0.88rem;
+      max-width: 100%;
+      padding: 0 0.5rem;
+    }
+
+    /* philosophy */
+    #philosophy {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      padding: 6rem 1.5rem 5rem;
+    }
+    .section-num {
+      font-size: clamp(4rem, 18vw, 6rem);
+    }
+    .philosophy-text { max-width: 100%; font-size: 0.9rem; }
+
+    /* innovation */
+    #innovation { padding: 5rem 1.5rem; }
+    .innovation-header { flex-direction: column; align-items: flex-start; gap: 1.5rem; margin-bottom: 3rem; }
+    .innovation-header-right { text-align: left; }
+    .innovation-header-right .section-title { text-align: left !important; }
+
+    .cards-grid {
+      grid-template-columns: 1fr;
+      gap: 1px;
+    }
+    .card { padding: 2.5rem 1.8rem 3rem; }
+
+    /* footer */
+    footer { padding: 5rem 1.5rem 3rem; }
+    .footer-top {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2.5rem;
+      margin-bottom: 3rem;
+    }
+    .footer-socials { flex-wrap: wrap; gap: 1rem; }
+    .footer-bottom {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .footer-bottom nav { flex-wrap: wrap; gap: 1rem; }
+
+    /* section divider */
+    .section-divider { padding: 0 1.5rem; }
+
+    /* cursor off on touch */
+    #cursor-outer, #cursor-inner { display: none; }
+    body { cursor: auto; }
+    .btn-liquid, .card, .social-link { cursor: pointer; }
+  }
+
+  @media (max-width: 480px) {
+    .hero-headline { font-size: clamp(2rem, 12vw, 3rem); }
+    .hero-eyebrow { font-size: 0.5rem; letter-spacing: 0.12em; }
+    .section-title { font-size: clamp(1.5rem, 7vw, 2rem); }
+    .card-title { font-size: 1.4rem; }
+    .footer-brand p { font-size: 0.72rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Custom Cursor -->
+<div id="cursor-outer"></div>
+<div id="cursor-inner"></div>
+
+<!-- Ocean Background -->
+<div id="ocean">
+  <div id="ocean-bed"></div>
+  <div id="ocean-mid">
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+    <div class="blob b4"></div>
+    <div class="blob b5"></div>
+  </div>
+  <div id="ocean-surface" id="ocean-surface">
+    <!-- shimmers injected by JS -->
+  </div>
+</div>
+
+<!-- Particle Canvas -->
+<canvas id="particle-canvas"></canvas>
+
+<!-- ============================================================
+     NAVIGATION
+     Logo: swap the <img src="#"> below with your real logo file.
+     The .nav-logo-img box is 28×28px — keep asset square or it clips.
+     ============================================================ -->
+<nav id="nav">
+
+  <!-- # LOGO LOCKUP — img placeholder + wordmark -->
+  <a href="#" class="nav-logo-wrap">
+    <div class="nav-logo-img">
+      <!-- # Replace src="#" with your logo path e.g. src="/assets/logo.svg" -->
+      <img src="#" alt="Blunov logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <!-- # Fallback glyph shown if img fails to load -->
+      <svg style="display:block" viewBox="0 0 14 14" fill="none" stroke="#00F2FF" stroke-width="1">
+        <rect x="1" y="1" width="5" height="5" rx="0.5"/>
+        <rect x="8" y="1" width="5" height="5" rx="0.5"/>
+        <rect x="1" y="8" width="5" height="5" rx="0.5"/>
+        <rect x="8" y="8" width="5" height="5" rx="0.5"/>
+      </svg>
+    </div>
+    <span class="nav-logo">BLUNOV</span>
+  </a>
+
+  <!-- # DESKTOP NAV LINK — single page -->
+  <ul class="nav-links">
+    <li><a href="#innovation">Our Products</a></li>
+  </ul>
+
+  <!-- # MOBILE HAMBURGER — 3-line toggle -->
+  <button class="nav-hamburger" id="hamburger" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+
+</nav>
+
+<!-- ============================================================
+     MOBILE DRAWER — full-screen overlay menu
+     ============================================================ -->
+<div class="nav-drawer" id="nav-drawer">
+  <ul>
+    <li><a href="#innovation" class="drawer-link">Our Products</a></li>
+  </ul>
+  <div class="nav-drawer-line"></div>
+  <a href="mailto:contact@blunov.com" class="nav-drawer-contact">contact@blunov.com</a>
+</div>
+
+<!-- ============================================================
+     MAIN CONTENT
+     ============================================================ -->
+<main>
+
+  <!-- ──────────────────────────────────────────────────────────
+       # SECTION 1 — HERO
+       Full-viewport opening. Edit headline, sub-line, and CTA.
+       ────────────────────────────────────────────────────────── -->
+  <section id="hero">
+    <p class="hero-eyebrow">Independent Technology Group &nbsp;·&nbsp; Established 2026 &nbsp;·&nbsp; Part of Hassan Group Limited</p>
+    <h1 class="hero-headline">Custom Software.<br><span>Scalable Systems.</span><br>Built for Business.</h1>
+    <p class="hero-sub">We design, build, and deploy software for B2B clients—from internal platforms to customer-facing products. Available to lease, transfer, or operate on a retained subscription basis.</p>
+    <div class="hero-cta">
+      <a href="#innovation" class="btn-liquid">Our Products</a>
+    </div>
+    <div class="hero-scroll-hint">
+      <span>Scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────────────────────────
+       # SECTION 2 — PHILOSOPHY / APPROACH
+       Two-column: large number left, text content right.
+       On mobile collapses to single column.
+       ────────────────────────────────────────────────────────── -->
+  <section id="philosophy">
+    <div class="section-num reveal">01</div>
+    <div class="philosophy-content">
+      <span class="section-tag reveal reveal-d1">Approach</span>
+      <h2 class="section-title reveal reveal-d2">Built to Fit.<br><em>Not to Force.</em></h2>
+      <div class="philosophy-rule reveal reveal-d2"></div>
+      <p class="philosophy-text reveal reveal-d3">
+        We do not sell off-the-shelf software. Every system we build is designed around the specific structure, scale, and objectives of the client organisation. We work across industries—retail operations, logistics infrastructure, internal tooling, and data-driven platforms—adapting our technical stack and delivery model to what the business actually needs. The result is software that integrates cleanly, performs reliably, and belongs to you.
+      </p>
+      <div class="philosophy-rule reveal reveal-d3"></div>
+      <blockquote class="philosophy-quote reveal reveal-d4">
+        "The right system is the one<br>that fits without friction."
+      </blockquote>
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       # SECTION 3 — OUR PRODUCTS / CAPABILITIES
+       3-column card grid (desktop) → 1-column stack (mobile).
+       Each card: index, icon, title, description.
+       ────────────────────────────────────────────────────────── -->
+  <section id="innovation">
+    <div class="innovation-header">
+      <div class="section-num reveal">02</div>
+      <div class="innovation-header-right reveal reveal-d1">
+        <span class="section-tag">What We Build</span>
+        <h2 class="section-title" style="text-align:right;">Core<br><em>Capabilities</em></h2>
+      </div>
+    </div>
+
+    <div class="cards-grid">
+
+      <!-- Card 1 -->
+      <div class="card reveal reveal-d1">
+        <span class="card-index">— 001</span>
+        <svg class="card-icon" viewBox="0 0 28 28" fill="none" stroke="#00F2FF" stroke-width="0.8">
+          <rect x="2" y="2" width="10" height="10" rx="1"/>
+          <rect x="16" y="2" width="10" height="10" rx="1"/>
+          <rect x="2" y="16" width="10" height="10" rx="1"/>
+          <rect x="16" y="16" width="10" height="10" rx="1"/>
+        </svg>
+        <h3 class="card-title">Platform<br>Development</h3>
+        <p class="card-text">We build end-to-end digital platforms for B2B clients—web applications, internal tools, client portals, and workflow systems. Delivered on a fixed scope or as an ongoing managed product.</p>
+        <svg class="card-arrow" viewBox="0 0 20 20" fill="none" stroke="#00F2FF" stroke-width="0.8">
+          <path d="M4 10h12M10 4l6 6-6 6"/>
+        </svg>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="card reveal reveal-d2">
+        <span class="card-index">— 002</span>
+        <svg class="card-icon" viewBox="0 0 28 28" fill="none" stroke="#00F2FF" stroke-width="0.8">
+          <circle cx="14" cy="14" r="10"/>
+          <circle cx="14" cy="14" r="4"/>
+          <line x1="14" y1="4" x2="14" y2="10"/>
+          <line x1="14" y1="18" x2="14" y2="24"/>
+          <line x1="4" y1="14" x2="10" y2="14"/>
+          <line x1="18" y1="14" x2="24" y2="14"/>
+        </svg>
+        <h3 class="card-title">Systems<br>Architecture</h3>
+        <p class="card-text">We design the underlying structure of complex software systems—database schemas, API layers, service architecture, and integration pipelines—built to scale without requiring a rewrite.</p>
+        <svg class="card-arrow" viewBox="0 0 20 20" fill="none" stroke="#00F2FF" stroke-width="0.8">
+          <path d="M4 10h12M10 4l6 6-6 6"/>
+        </svg>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="card reveal reveal-d3">
+        <span class="card-index">— 003</span>
+        <svg class="card-icon" viewBox="0 0 28 28" fill="none" stroke="#00F2FF" stroke-width="0.8">
+          <circle cx="14" cy="14" r="11"/>
+          <ellipse cx="14" cy="14" rx="5" ry="11"/>
+          <line x1="3" y1="14" x2="25" y2="14"/>
+          <path d="M5 8 Q14 10 23 8"/>
+          <path d="M5 20 Q14 18 23 20"/>
+        </svg>
+        <h3 class="card-title">Operations<br>Software</h3>
+        <p class="card-text">Logistics, inventory, and operations management software built for businesses that move physical goods. We replace manual processes and legacy spreadsheets with reliable, purpose-built tooling.</p>
+        <svg class="card-arrow" viewBox="0 0 20 20" fill="none" stroke="#00F2FF" stroke-width="0.8">
+          <path d="M4 10h12M10 4l6 6-6 6"/>
+        </svg>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<!-- ============================================================
+     # SECTION 4 — FOOTER
+     Brand block left, socials right.
+     Bottom row: copyright + nav links.
+     ============================================================ -->
+<footer id="footer">
+  <div class="section-divider" style="padding:0;margin-bottom:5rem;"><hr></div>
+  <div class="footer-top reveal">
+    <div class="footer-brand">
+      <!-- # FOOTER LOGO — same placeholder as nav, swap src when ready -->
+      <a href="#" class="nav-logo-wrap" style="margin-bottom:1rem;display:inline-flex;">
+        <div class="nav-logo-img">
+          <img src="#" alt="Blunov logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+          <svg style="display:block" viewBox="0 0 14 14" fill="none" stroke="#00F2FF" stroke-width="1">
+            <rect x="1" y="1" width="5" height="5" rx="0.5"/>
+            <rect x="8" y="1" width="5" height="5" rx="0.5"/>
+            <rect x="1" y="8" width="5" height="5" rx="0.5"/>
+            <rect x="8" y="8" width="5" height="5" rx="0.5"/>
+          </svg>
+        </div>
+        <span class="nav-logo" style="font-size:1.3rem;letter-spacing:0.3em;">BLUNOV</span>
+      </a>
+      <p>Custom software and scalable systems for B2B clients. Independent technology group. Global / Remote.<br><br>Part of Hassan Group Limited.</p>
+    </div>
+    <div class="footer-socials">
+      <!-- Email -->
+      <a href="/cdn-cgi/l/email-protection#83e0ecedf7e2e0f7c3e1eff6edecf5ade0ecee" class="social-link" aria-label="Email" style="width:auto;border-radius:0;padding:0 1rem;font-family:var(--font-body);font-size:0.68rem;letter-spacing:0.1em;font-weight:300;border-radius:2px;"><span class="__cf_email__" data-cfemail="86e5e9e8f2e7e5f2c6e4eaf3e8e9f0a8e5e9eb">[email&#160;protected]</span></a>
+      <!-- X -->
+      <a href="#" class="social-link" aria-label="X">
+        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      </a>
+      <!-- Instagram -->
+      <a href="#" class="social-link" aria-label="Instagram">
+        <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+      </a>
+    </div>
+  </div>
+  <div class="footer-bottom reveal">
+    <p>© 2026 Blunov Technology International. All rights reserved. Global / Remote.</p>
+    <nav>
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="/cdn-cgi/l/email-protection#01626e6f7560627541636d746f6e772f626e6c">Contact</a>
+    </nav>
+  </div>
+</footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+(function() {
+  'use strict';
+
+  /* ─── CURSOR ─────────────────────────────────────────────── */
+  const cursorO = document.getElementById('cursor-outer');
+  const cursorI = document.getElementById('cursor-inner');
+  let mx = 0, my = 0;
+  let ox = 0, oy = 0;
+
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+  function animCursor() {
+    ox += (mx - ox) * 0.14;
+    oy += (my - oy) * 0.14;
+    cursorO.style.left = ox + 'px';
+    cursorO.style.top  = oy + 'px';
+    cursorI.style.left = mx + 'px';
+    cursorI.style.top  = my + 'px';
+    requestAnimationFrame(animCursor);
+  }
+  animCursor();
+
+  /* ─── SHIMMER GENERATION ─────────────────────────────────── */
+  const surface = document.getElementById('ocean-surface');
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement('div');
+    s.className = 'shimmer';
+    const sz = 40 + Math.random() * 140;
+    s.style.cssText = `
+      width:${sz}px;height:${sz}px;
+      left:${Math.random()*100}%;top:${Math.random()*100}%;
+      animation-duration:${3+Math.random()*5}s;
+      animation-delay:${-Math.random()*6}s;
+    `;
+    surface.appendChild(s);
+  }
+
+  /* ─── PARALLAX WITH LERP + MOMENTUM ─────────────────────── */
+  let scrollY = 0;
+  let targetMid = 0, currentMid = 0;
+  let targetSurf = 0, currentSurf = 0;
+  let scrollVel = 0, lastScrollY = 0;
+  let isScrolling = false;
+  let scrollTimer;
+
+  const oceanMid   = document.getElementById('ocean-mid');
+  const oceanSurf  = document.getElementById('ocean-surface');
+
+  window.addEventListener('scroll', () => {
+    scrollY = window.scrollY;
+    scrollVel = scrollY - lastScrollY;
+    lastScrollY = scrollY;
+    isScrolling = true;
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => { isScrolling = false; }, 80);
+  }, { passive: true });
+
+  let driftVelMid = 0, driftVelSurf = 0;
+
+  function parallaxTick() {
+    const maxScroll = document.body.scrollHeight - window.innerHeight;
+    const progress = maxScroll > 0 ? scrollY / maxScroll : 0;
+
+    if (isScrolling) {
+      targetMid  = progress * -80;
+      targetSurf = progress * -160;
+      driftVelMid  = (targetMid  - currentMid)  * 0.04;
+      driftVelSurf = (targetSurf - currentSurf) * 0.04;
+    } else {
+      driftVelMid  *= 0.96;
+      driftVelSurf *= 0.96;
+    }
+
+    currentMid  += (targetMid  - currentMid)  * 0.055 + driftVelMid;
+    currentSurf += (targetSurf - currentSurf) * 0.085 + driftVelSurf;
+
+    oceanMid.style.transform  = `translateY(${currentMid}px)`;
+    oceanSurf.style.transform = `translateY(${currentSurf}px)`;
+
+    requestAnimationFrame(parallaxTick);
+  }
+  parallaxTick();
+
+  /* ─── PARTICLE SYSTEM ────────────────────────────────────── */
+  const canvas = document.getElementById('particle-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H;
+  let mouseX = 0.5, mouseY = 0.5;
+  let targetPX = 0.5, targetPY = 0.5;
+  let currentPX = 0.5, currentPY = 0.5;
+
+  document.addEventListener('mousemove', e => {
+    targetPX = e.clientX / W;
+    targetPY = e.clientY / H;
+  });
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const PARTICLES = 55;
+  const particles = Array.from({ length: PARTICLES }, () => ({
+    x: Math.random(),
+    y: Math.random(),
+    vx: (Math.random() - 0.5) * 0.00015,
+    vy: (Math.random() - 0.5) * 0.00015 - 0.00008,
+    size: 0.6 + Math.random() * 1.2,
+    alpha: 0.08 + Math.random() * 0.22,
+    life: Math.random(),
+    speed: 0.3 + Math.random() * 0.7,
+  }));
+
+  function drawParticles() {
+    ctx.clearRect(0, 0, W, H);
+    currentPX += (targetPX - currentPX) * 0.025;
+    currentPY += (targetPY - currentPY) * 0.025;
+
+    const offsetX = (currentPX - 0.5) * 0.025;
+    const offsetY = (currentPY - 0.5) * 0.025;
+
+    particles.forEach(p => {
+      p.x += p.vx * p.speed + offsetX * 0.002;
+      p.y += p.vy * p.speed + offsetY * 0.002;
+      p.life += 0.003;
+
+      if (p.x < -0.05) p.x = 1.05;
+      if (p.x > 1.05)  p.x = -0.05;
+      if (p.y < -0.05) p.y = 1.05;
+      if (p.y > 1.05)  p.y = -0.05;
+
+      const pulse = 0.5 + 0.5 * Math.sin(p.life * 2.1);
+      const a = p.alpha * pulse;
+
+      ctx.beginPath();
+      ctx.arc(p.x * W, p.y * H, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0,242,255,${a})`;
+      ctx.fill();
+    });
+
+    requestAnimationFrame(drawParticles);
+  }
+  drawParticles();
+
+  /* ─── SCROLL REVEAL ──────────────────────────────────────── */
+  const revealEls = document.querySelectorAll('.reveal');
+  const heroEl = document.getElementById('hero');
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+
+  revealEls.forEach(el => io.observe(el));
+
+  /* Hero immediate reveal */
+  requestAnimationFrame(() => {
+    heroEl.classList.add('hero-visible');
+  });
+
+  /* nav scroll */
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 60);
+  }, { passive: true });
+
+  /* hamburger */
+  const hamburger = document.getElementById('hamburger');
+  const drawer    = document.getElementById('nav-drawer');
+  const drawerLinks = drawer.querySelectorAll('.drawer-link');
+
+  hamburger.addEventListener('click', () => {
+    const isOpen = hamburger.classList.toggle('open');
+    drawer.classList.toggle('open', isOpen);
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+  });
+
+  drawerLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      hamburger.classList.remove('open');
+      drawer.classList.remove('open');
+      document.body.style.overflow = '';
+    });
+  });
+
+})();
+</script>
+</body>
+</html>
